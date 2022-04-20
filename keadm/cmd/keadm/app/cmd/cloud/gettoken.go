@@ -35,6 +35,7 @@ func NewGettoken() *cobra.Command {
 		Long:    gettokenLongDescription,
 		Example: gettokenExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// cloudcore起来后，生成&维护的Secrets  tokensecret
 			token, err := queryToken(constants.SystemNamespace, common.TokenSecretName, init.Kubeconfig)
 			if err != nil {
 				fmt.Printf("failed to get token, err is %s\n", err)

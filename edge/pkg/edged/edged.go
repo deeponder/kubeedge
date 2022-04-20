@@ -21,6 +21,8 @@ Changes done are
 and made some variant
 */
 
+// edged 为kubelet简版
+
 package edged
 
 import (
@@ -1134,6 +1136,7 @@ func (e *edged) syncPod() {
 	time.Sleep(10 * time.Second)
 
 	//when starting, send msg to metamanager once to get existing pods
+	// 启动时，从metamanager获取需要调度的pods
 	info := model.NewMessage("").BuildRouter(e.Name(), e.Group(), e.namespace+"/"+model.ResourceTypePod,
 		model.QueryOperation)
 	beehiveContext.Send(metamanager.MetaManagerModuleName, *info)
@@ -1163,8 +1166,10 @@ func (e *edged) syncPod() {
 			continue
 		}
 		klog.Infof("result content is %s", result.Content)
+		// 判断资源的类型, pod\configmap\secret\volume
 		switch resType {
 		case model.ResourceTypePod:
+			// op == response means add pod?
 			if op == model.ResponseOperation && resID == "" && result.GetSource() == metamanager.MetaManagerModuleName {
 				err := e.handlePodListFromMetaManager(content)
 				if err != nil {

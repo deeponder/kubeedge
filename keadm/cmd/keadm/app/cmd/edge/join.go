@@ -159,6 +159,7 @@ func Add2ToolsList(toolList map[string]types.ToolsInstaller, flagData map[string
 			kubeVer = types.DefaultKubeEdgeVersion
 		}
 	}
+	// 固定的两个分支，KubeEdge & MQTT
 	toolList[constants.ProjectName] = &util.KubeEdgeInstTool{
 		Common: util.Common{
 			ToolVersion: semver.MustParse(kubeVer),
@@ -192,5 +193,6 @@ func Execute(toolList map[string]types.ToolsInstaller) error {
 	}
 
 	//Install and Start KubeEdge Node
+	// KubeEdge 单独处理
 	return toolList[constants.ProjectName].InstallTools()
 }

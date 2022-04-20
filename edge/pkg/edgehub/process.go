@@ -66,6 +66,7 @@ func (*defaultHandler) Process(message *model.Message, clientHub clients.Adapter
 		md = modules.BusGroup
 	}
 
+	// 同步消息，需要回包
 	isResponse := isSyncResponse(message.GetParentID())
 	if isResponse {
 		beehiveContext.SendResp(*message)

@@ -54,14 +54,22 @@ func createTLSConfig(ca, cert, key []byte) tls.Config {
 func startWebsocketServer() {
 	tlsConfig := createTLSConfig(hubconfig.Config.Ca, hubconfig.Config.Cert, hubconfig.Config.Key)
 	svc := server.Server{
-		Type:       api.ProtocolTypeWS,
-		TLSConfig:  &tlsConfig,
-		AutoRoute:  true,
+		Type:      api.ProtocolTypeWS,
+		TLSConfig: &tlsConfig,
+		AutoRoute: true,
+		// 重要：： srv.options.ConnNotify(conn) 第一次连接的处理函数
 		ConnNotify: handler.CloudhubHandler.OnRegister,
-		Addr:       fmt.Sprintf("%s:%d", hubconfig.Config.WebSocket.Address, hubconfig.Config.WebSocket.Port),
-		ExOpts:     api.WSServerOption{Path: "/"},
+		// ws的监听地址， 对应http.Server的Addr
+		Addr: fmt.Sprintf("%s:%d", hubconfig.Config.WebSocket.Address, hubconfig.Config.WebSocket.Port),
+		// ws uri。 http.HandleFunc(extendOption.Path, wsServer.ServeHTTP)
+		ExOpts: api.WSServerOption{Path: "/"},
+
+		//Handler: mux.MuxDefault.ServeConn   长连的消息(来自边端)转发处理默认走这个， dispatch->messagehandler.HandleServer
 	}
 	klog.Infof("Starting cloudhub %s server", api.ProtocolTypeWS)
+	// 没用gorilla/websocket
+	// github.com/kubeedge/viaduct/pkg/server/ws.go
+	//
 	klog.Exit(svc.ListenAndServeTLS("", ""))
 }
 

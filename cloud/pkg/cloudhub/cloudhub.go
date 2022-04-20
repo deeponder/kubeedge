@@ -34,6 +34,7 @@ func newCloudHub(enable bool) *cloudHub {
 	// declare used informer
 	clusterObjectSyncInformer := crdFactory.Reliablesyncs().V1alpha1().ClusterObjectSyncs()
 	objectSyncInformer := crdFactory.Reliablesyncs().V1alpha1().ObjectSyncs()
+	// 初始化ChannelMessageQueue， 每个Node都维护一个消息的队列
 	messageq := channelq.NewChannelMessageQueue(objectSyncInformer.Lister(), clusterObjectSyncInformer.Lister(), client.GetCRDClient())
 	ch := &cloudHub{
 		enable:   enable,
@@ -45,6 +46,7 @@ func newCloudHub(enable bool) *cloudHub {
 }
 
 func Register(hub *v1alpha1.CloudHub) {
+	// 简单的参数校验 和 ca等证书的加载
 	hubconfig.InitConfigure(hub)
 	core.Register(newCloudHub(hub.Enable))
 }
@@ -73,6 +75,7 @@ func (a *cloudHub) Start() {
 
 	// check whether the certificates exist in the local directory,
 	// and then check whether certificates exist in the secret, generate if they don't exist
+	// 创建相关的Cert Secret资源
 	if err := httpserver.PrepareAllCerts(); err != nil {
 		klog.Exit(err)
 	}
@@ -81,11 +84,14 @@ func (a *cloudHub) Start() {
 	close(DoneTLSTunnelCerts)
 
 	// generate Token
+	// token用于edge连上来的的校验， 默认12小时有效期。 本质为JWT， 单独起一个协程，定时更新
+	// 生成后，存入/更新 Secret资源, tokensecret
 	if err := httpserver.GenerateToken(); err != nil {
 		klog.Exit(err)
 	}
 
 	// HttpServer mainly used to issue certificates for the edge
+	// 要么校验证书，要么校验上一步生成的jwt
 	go httpserver.StartHTTPServer()
 
 	servers.StartCloudHub(a.messageq)
@@ -93,6 +99,7 @@ func (a *cloudHub) Start() {
 	if hubconfig.Config.UnixSocket.Enable {
 		// The uds server is only used to communicate with csi driver from kubeedge on cloud.
 		// It is not used to communicate between cloud and edge.
+		// cloud端的存储组件通信
 		go udsserver.StartServer(hubconfig.Config.UnixSocket.Address)
 	}
 }

@@ -47,6 +47,7 @@ keadm init --kubeedge-version=%s  --kube-config=/root/.kube/config
 
 // NewCloudInit represents the keadm init command for cloud component
 func NewCloudInit() *cobra.Command {
+	// 默认的k8s配置地址
 	init := newInitOptions()
 
 	tools := make(map[string]types.ToolsInstaller)
@@ -133,6 +134,7 @@ func Add2ToolsList(toolList map[string]types.ToolsInstaller, flagData map[string
 		KubeConfig:  initOptions.KubeConfig,
 		Master:      initOptions.Master,
 	}
+	// 云端
 	toolList["Cloud"] = &util.KubeCloudInstTool{
 		Common:           common,
 		AdvertiseAddress: initOptions.AdvertiseAddress,
@@ -156,5 +158,6 @@ func Execute(toolList map[string]types.ToolsInstaller) error {
 		}
 	}
 
+	// 执行云端实际的init逻辑
 	return toolList["Cloud"].InstallTools()
 }

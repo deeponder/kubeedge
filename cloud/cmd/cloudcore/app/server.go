@@ -43,6 +43,7 @@ import (
 )
 
 func NewCloudCoreCommand() *cobra.Command {
+	// 指定config的路径
 	opts := options.NewCloudCoreOptions()
 	cmd := &cobra.Command{
 		Use: "cloudcore",
@@ -57,14 +58,17 @@ kubernetes controller which manages devices so that the device metadata/status d
 			flag.PrintDefaultConfigAndExitIfRequested(v1alpha1.NewDefaultCloudCoreConfig())
 			flag.PrintFlags(cmd.Flags())
 
+			// config文件是否存在
 			if errs := opts.Validate(); len(errs) > 0 {
 				klog.Exit(util.SpliceErrors(errs))
 			}
 
+			// 解析获取配置文件的内容
 			config, err := opts.Config()
 			if err != nil {
 				klog.Exit(err)
 			}
+			// edge join的操作，也有类似的配置校验
 			if errs := validation.ValidateCloudCoreConfiguration(config); len(errs) > 0 {
 				klog.Exit(util.SpliceErrors(errs.ToAggregate().Errors()))
 			}
@@ -75,11 +79,13 @@ kubernetes controller which manages devices so that the device metadata/status d
 
 			// To help debugging, immediately log version
 			klog.Infof("Version: %+v", version.Get())
+			// 操作k8s的各种client, kube\crd\dynamic
 			client.InitKubeEdgeClient(config.KubeAPIConfig)
 
 			// Negotiate TunnelPort for multi cloudcore instances
 			waitTime := rand.Int31n(10)
 			time.Sleep(time.Duration(waitTime) * time.Second)
+			// 协商tunnel port, 通过config管理/存储. cloudstream 用
 			tunnelport, err := NegotiateTunnelPort()
 			if err != nil {
 				panic(err)
@@ -87,11 +93,14 @@ kubernetes controller which manages devices so that the device metadata/status d
 
 			config.CommonConfig.TunnelPort = *tunnelport
 
+			// k8s的list-watch机制？  补功课
 			gis := informers.GetInformersManager()
 
+			// 注册cloud下的所有模块， 配置文件为config下各模块的配置
 			registerModules(config)
 
 			ctx := beehiveContext.GetContext()
+			// iptables?  补功课
 			if config.Modules.IptablesManager == nil || config.Modules.IptablesManager.Enable && config.Modules.IptablesManager.Mode == v1alpha1.InternalMode {
 				// By default, IptablesManager manages tunnel port related iptables rules
 				// The internal mode will share the host network, forward to the stream port.
@@ -100,6 +109,7 @@ kubernetes controller which manages devices so that the device metadata/status d
 			}
 
 			// Start all modules
+			// 调用cloud下所有模块的start函数，启动服务
 			core.StartModules()
 			gis.Start(ctx.Done())
 			core.GracefulShutdown()

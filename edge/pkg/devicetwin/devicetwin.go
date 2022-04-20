@@ -34,6 +34,7 @@ func newDeviceTwin(enable bool) *DeviceTwin {
 func Register(deviceTwin *v1alpha1.DeviceTwin, nodeName string) {
 	deviceconfig.InitConfigure(deviceTwin, nodeName)
 	dt := newDeviceTwin(deviceTwin.Enable)
+	// sqlite 三张表， device、device_attr、device_twin
 	dtclient.InitDBTable(dt)
 	core.Register(dt)
 }
@@ -57,6 +58,7 @@ func (dt *DeviceTwin) Enable() bool {
 func (dt *DeviceTwin) Start() {
 	dtContexts, _ := dtcontext.InitDTContext()
 	dt.DTContexts = dtContexts
+	// 从sqlite获取全部的Device信息，存入dt.DTContexts.DeviceList
 	err := SyncSqlite(dt.DTContexts)
 	if err != nil {
 		klog.Errorf("Start DeviceTwin Failed, Sync Sqlite error:%v", err)

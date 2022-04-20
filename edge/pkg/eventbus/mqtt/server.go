@@ -77,6 +77,7 @@ func NewMqttServer(sqz int, url string, retain bool, qos int) *Server {
 func (m *Server) Run() error {
 	var err error
 
+	// gomqtt
 	m.server, err = transport.Launch(m.url)
 	if err != nil {
 		klog.Errorf("Launch transport failed %v", err)
@@ -86,8 +87,10 @@ func (m *Server) Run() error {
 	m.backend = broker.NewMemoryBackend()
 	m.backend.SessionQueueSize = m.sessionQueueSize
 
+	// event触发的回调
 	m.backend.Logger = func(event broker.LogEvent, client *broker.Client, pkt packet.Generic, msg *packet.Message, err error) {
 		if event == broker.MessagePublished {
+			// 命中关注的topic
 			if len(m.tree.Match(msg.Topic)) > 0 {
 				m.onSubscribe(msg)
 			}
@@ -107,6 +110,7 @@ func (m *Server) onSubscribe(msg *packet.Message) {
 	// for "SYS/dis/upload_records", no need to base64 topic
 	var target string
 	var message *beehiveModel.Message
+	// event/device 发往TwinDevice， 其它的发往edgeHub， 最终可能去cloudhub
 	if strings.HasPrefix(msg.Topic, "$hw/events/device") || strings.HasPrefix(msg.Topic, "$hw/events/node") {
 		target = modules.TwinGroup
 		resource := base64.URLEncoding.EncodeToString([]byte(msg.Topic))

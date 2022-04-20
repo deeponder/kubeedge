@@ -49,6 +49,7 @@ func initDBTable(module core.Module) {
 		klog.Infof("Module %s is disabled, DB meta for it will not be registered", module.Name())
 		return
 	}
+	// 两张表， meta & meta_v2。 默认使用sqlite3
 	orm.RegisterModel(new(dao.Meta))
 	orm.RegisterModel(new(v2.MetaV2))
 }
@@ -66,11 +67,13 @@ func (m *metaManager) Enable() bool {
 }
 
 func (m *metaManager) Start() {
+	// 简版 apiServer， 服务edge
 	if metaserverconfig.Config.Enable {
 		imitator.StorageInit()
 		go metaserver.NewMetaServer().Start(beehiveContext.Done())
 	}
 	go func() {
+		// 同步数据到云端， 60s 同步一次
 		period := getSyncInterval()
 		timer := time.NewTimer(period)
 		for {
@@ -81,6 +84,7 @@ func (m *metaManager) Start() {
 			case <-timer.C:
 				timer.Reset(period)
 				msg := model.NewMessage("").BuildRouter(MetaManagerModuleName, GroupResource, model.ResourceTypePodStatus, OperationMetaSync)
+				// 发给自己处理
 				beehiveContext.Send(MetaManagerModuleName, *msg)
 			}
 		}

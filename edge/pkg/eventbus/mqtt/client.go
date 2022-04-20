@@ -85,6 +85,7 @@ func onSubConnectionLost(client MQTT.Client, err error) {
 	go MQTTHub.InitSubClient()
 }
 
+// 初始化默认需要关注的topic(SubTopics)和sqlite-sub_topics表中存的topics
 func onSubConnect(client MQTT.Client) {
 	for _, t := range SubTopics {
 		token := client.Subscribe(t, 1, OnSubMessageReceived)
@@ -114,6 +115,8 @@ func onSubConnect(client MQTT.Client) {
 }
 
 // OnSubMessageReceived msg received callback
+// 类同server.go->Server.onSubscribe
+// event/device 发往TwinDevice， 其它的发往edgeHub， 最终可能去cloudhub
 func OnSubMessageReceived(client MQTT.Client, msg MQTT.Message) {
 	klog.Infof("OnSubMessageReceived receive msg from topic: %s", msg.Topic())
 	// for "$hw/events/device/+/twin/+", "$hw/events/node/+/membership/get", send to twin

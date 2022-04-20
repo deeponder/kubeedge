@@ -63,7 +63,7 @@ func newServicebus(enable bool, server string, port, timeout int) *servicebus {
 	return &servicebus{
 		enable:  enable,
 		server:  server,
-		port:    port,
+		port:    port, // 默认9060
 		timeout: timeout,
 	}
 }
@@ -87,12 +87,14 @@ func (sb *servicebus) Enable() bool {
 	return sb.enable
 }
 
+// 提供cloud端的模块， 访问edge端http服务的能力, 双向
 func (sb *servicebus) Start() {
 	// no need to call TopicInit now, we have fixed topic
 	htc.Timeout = time.Second * 10
 	uc.Client = htc
 	if !dao.IsTableEmpty() {
 		if atomic.CompareAndSwapInt32(&inited, 0, 1) {
+			// 边到云
 			go server(c)
 		}
 	}
@@ -104,6 +106,7 @@ func (sb *servicebus) Start() {
 			return
 		default:
 		}
+		// 云到边的http servers
 		msg, err := beehiveContext.Receive(modules.ServiceBusModuleName)
 		if err != nil {
 			klog.Warningf("servicebus receive msg error %v", err)
@@ -126,6 +129,7 @@ func processMessage(msg *beehiveModel.Message) {
 	case "start":
 		if atomic.CompareAndSwapInt32(&inited, 0, 1) {
 			dao.InsertUrls(resource)
+			// 启动服务， 边到云的http请求消息转发
 			go server(c)
 		}
 	case "stop":
@@ -134,6 +138,7 @@ func processMessage(msg *beehiveModel.Message) {
 			c <- struct{}{}
 		}
 	default:
+		// 解析出边端http服务的端口和uri
 		r := strings.Split(resource, ":")
 		if len(r) != 2 {
 			m := "the format of resource " + resource + " is incorrect"
@@ -169,6 +174,7 @@ func processMessage(msg *beehiveModel.Message) {
 		//send message with resource to the edge part
 		operation := httpRequest.Method
 		targetURL := "http://127.0.0.1:" + r[0] + r[1]
+		// Http请求，相当于请求本地服务
 		resp, err := uc.HTTPDo(operation, targetURL, httpRequest.Header, httpRequest.Body)
 		if err != nil {
 			m := "error to call service"
@@ -198,6 +204,8 @@ func processMessage(msg *beehiveModel.Message) {
 		response := commonType.HTTPResponse{Header: resp.Header, StatusCode: resp.StatusCode, Body: resBody}
 		responseMsg := beehiveModel.NewMessage(msg.GetID()).SetRoute(modules.ServiceBusModuleName, modules.UserGroup).
 			SetResourceOperation("", beehiveModel.UploadOperation).FillBody(response)
+
+		// 正常回包给云端
 		beehiveContext.SendToGroup(modules.HubGroup, *responseMsg)
 	}
 }
@@ -232,6 +240,7 @@ func server(stopChan <-chan struct{}) {
 	utilruntime.HandleError(s.ListenAndServe())
 }
 
+// 发往cloud
 func buildBasicHandler(timeout time.Duration) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		sReq := &serverRequest{}

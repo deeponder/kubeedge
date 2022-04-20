@@ -55,6 +55,7 @@ func (eb *eventbus) Enable() bool {
 }
 
 func (eb *eventbus) Start() {
+	// 外部的mqtt， 默认走这, 用的paho.mqtt.golang 库
 	if eventconfig.Config.MqttMode >= v1alpha1.MqttModeBoth {
 		hub := &mqttBus.Client{
 			MQTTUrl:     eventconfig.Config.MqttServerExternal,
@@ -73,9 +74,10 @@ func (eb *eventbus) Start() {
 		// launch an internal mqtt server only
 		mqttServer = mqttBus.NewMqttServer(
 			int(eventconfig.Config.MqttSessionQueueSize),
-			eventconfig.Config.MqttServerInternal,
+			eventconfig.Config.MqttServerInternal, // 默认1884端口
 			eventconfig.Config.MqttRetain,
 			int(eventconfig.Config.MqttQOS))
+		// 初始化默认需要关注的topic(SubTopics)和sqlite-sub_topics表中存的topics
 		mqttServer.InitInternalTopics()
 		err := mqttServer.Run()
 		if err != nil {
@@ -85,6 +87,7 @@ func (eb *eventbus) Start() {
 		klog.Infof("Launch internal mqtt broker %v successfully", eventconfig.Config.MqttServerInternal)
 	}
 
+	// 处理发来eventbus的消息，publish到mqttt, or 新增/取消topics订阅(持久化到sqlite)
 	eb.pubCloudMsgToEdge()
 }
 
@@ -114,11 +117,15 @@ func (eb *eventbus) pubCloudMsgToEdge() {
 		resource := accessInfo.GetResource()
 		switch operation {
 		case messagepkg.OperationSubscribe:
+			// 新增topics订阅
 			eb.subscribe(resource)
 			klog.Infof("Edge-hub-cli subscribe topic to %s", resource)
 		case messagepkg.OperationUnsubscribe:
+			// 取消topic订阅
 			eb.unsubscribe(resource)
 			klog.Infof("Edge-hub-cli unsubscribe topic to %s", resource)
+
+		//	下面几个都是发布topic
 		case messagepkg.OperationMessage:
 			body, ok := accessInfo.GetContent().(map[string]interface{})
 			if !ok {

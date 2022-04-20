@@ -124,8 +124,12 @@ type UpstreamController struct {
 func (uc *UpstreamController) Start() error {
 	klog.Info("start upstream controller")
 
+	// Receive 发到EdgeController的消息， 根据不同的消息类型塞到对应的channel
 	go uc.dispatchMessage()
 
+	// 根据配置，不同的操作类型，起N个goroutine
+	// 接收dispatch中， 塞过来的msg
+	// 各goroutine拿到msg后，调用k8s client  api 进行操作k8s资源，从而完成上行中间人角色
 	for i := 0; i < int(uc.config.Load.UpdateNodeStatusWorkers); i++ {
 		go uc.updateNodeStatus()
 	}
@@ -173,6 +177,7 @@ func (uc *UpstreamController) dispatchMessage() {
 			return
 		default:
 		}
+		// beehive  metaconfig.ModuleNameEdgeController
 		msg, err := uc.messageLayer.Receive()
 		if err != nil {
 			klog.Warningf("receive message failed, %s", err)
@@ -190,6 +195,8 @@ func (uc *UpstreamController) dispatchMessage() {
 
 		klog.V(5).Infof("message: %s, operation type is: %s", msg.GetID(), msg.GetOperation())
 
+		// 根据不同的消息类型， 转发给不通的channel
+		// channel 对端N个goroutine 处理消息
 		switch resourceType {
 		case model.ResourceTypeNodeStatus:
 			uc.nodeStatusChan <- msg
@@ -997,6 +1004,7 @@ func (uc *UpstreamController) nodeMsgResponse(nodeName, namespace, content strin
 }
 
 // NewUpstreamController create UpstreamController from config
+// 初始化 各个资源的channel
 func NewUpstreamController(config *v1alpha1.EdgeController, factory k8sinformer.SharedInformerFactory) (*UpstreamController, error) {
 	uc := &UpstreamController{
 		kubeClient:   client.GetKubeClient(),

@@ -78,6 +78,7 @@ type HandleFunc func(info *model.HubInfo, exitServe chan ExitCode)
 var once sync.Once
 
 // CloudhubHandler the shared handler for both websocket and quic servers
+// Global Variable
 var CloudhubHandler *MessageHandle
 
 // InitHandler create a handler for websocket and quic servers
@@ -91,18 +92,23 @@ func InitHandler(eventq *channelq.ChannelMessageQueue) {
 			crdClient:         client.GetCRDClient(),
 		}
 
+		// edgeNode连上来后， 每个Node的启动对应的keepalive, messagewrite、listmessagewrite的loop
+		// MsgWrite： 从当前的Node对应的queue获取key， 从store获取对应的消息， 然后write to connect
 		CloudhubHandler.Handlers = []HandleFunc{
 			CloudhubHandler.KeepaliveCheckLoop,
 			CloudhubHandler.MessageWriteLoop,
 			CloudhubHandler.ListMessageWriteLoop,
 		}
 
+		// viaduct。 Wrapper for quic and websocket
+		// 注册来自edgeNode的消息的处理函数。 HandleServer
 		CloudhubHandler.initServerEntries()
 	})
 }
 
 // initServerEntries register handler func
 func (mh *MessageHandle) initServerEntries() {
+	// HTTP request multiplexer   多路复用
 	mux.Entry(mux.NewPattern("*").Op("*"), mh.HandleServer)
 }
 
@@ -182,6 +188,7 @@ func (mh *MessageHandle) OnRegister(connection conn.Connection) {
 		return
 	}
 	mh.nodeConns.Store(nodeID, io)
+	// ws建立后， 注册节点+启动节点对应三个loop，用于云到边的消息下发
 	go mh.ServeConn(&model.HubInfo{ProjectID: projectID, NodeID: nodeID})
 }
 

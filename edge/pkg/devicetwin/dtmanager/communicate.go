@@ -23,6 +23,7 @@ var (
 )
 
 func init() {
+	// 各模块写法还不一样。。。
 	initActionCallBack()
 }
 

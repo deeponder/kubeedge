@@ -23,6 +23,7 @@ import (
 	"github.com/kubeedge/kubeedge/keadm/cmd/keadm/app"
 )
 
+// 二进制工具的入口
 func main() {
 	if err := app.Run(); err != nil {
 		fmt.Println("execute keadm command failed: ", err)

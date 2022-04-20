@@ -97,6 +97,7 @@ func (uc *UpstreamController) dispatchMessage() {
 
 		switch resourceType {
 		case constants.ResourceTypeTwinEdgeUpdated:
+			// 更新deviceStatus
 			uc.deviceStatusChan <- msg
 		case constants.ResourceTypeMembershipDetail:
 		default:
@@ -111,6 +112,7 @@ func (uc *UpstreamController) updateDeviceStatus() {
 		case <-beehiveContext.Done():
 			klog.Info("Stop updateDeviceStatus")
 			return
+		//	接收deviceStatus更新信息
 		case msg := <-uc.deviceStatusChan:
 			klog.Infof("Message: %s, operation is: %s, and resource is: %s", msg.GetID(), msg.GetOperation(), msg.GetResource())
 			msgTwin, err := uc.unmarshalDeviceStatusMessage(msg)
@@ -161,6 +163,7 @@ func (uc *UpstreamController) updateDeviceStatus() {
 				klog.Errorf("Failed to marshal device status %v", deviceStatus)
 				continue
 			}
+			//更新Device， crdClient
 			err = uc.crdClient.DevicesV1alpha2().RESTClient().Patch(MergePatchType).Namespace(cacheDevice.Namespace).Resource(ResourceTypeDevices).Name(deviceID).Body(body).Do(context.Background()).Error()
 			if err != nil {
 				klog.Errorf("Failed to patch device status %v of device %v in namespace %v, err: %v", deviceStatus, deviceID, cacheDevice.Namespace, err)
@@ -180,6 +183,7 @@ func (uc *UpstreamController) updateDeviceStatus() {
 			}
 			resMsg.BuildRouter(modules.DeviceControllerModuleName, constants.GroupTwin, resource, model.ResponseOperation)
 			resMsg.Content = commonconst.MessageSuccessfulContent
+			// 返回更新OK
 			err = uc.messageLayer.Response(*resMsg)
 			if err != nil {
 				klog.Warningf("Message: %s process failure, response failed with error: %s", msg.GetID(), err)

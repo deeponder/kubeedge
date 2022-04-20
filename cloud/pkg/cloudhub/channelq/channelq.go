@@ -54,7 +54,9 @@ func NewChannelMessageQueue(objectSyncLister reliablesyncslisters.ObjectSyncList
 // DispatchMessage gets the message from the cloud, extracts the
 // node id from it, gets the message associated with the node
 // and pushes the message to the queue
+// 把msg塞给了Node对应的Queue/Store
 func (q *ChannelMessageQueue) DispatchMessage() {
+	// 一个大循环， Receive发来CloudHub的消息, dispatch到维护的目标Node的channel
 	for {
 		select {
 		case <-beehiveContext.Done():
@@ -68,11 +70,13 @@ func (q *ChannelMessageQueue) DispatchMessage() {
 			klog.Info("receive not Message format message")
 			continue
 		}
+		// 从消息体，获取nodeID
 		nodeID, err := GetNodeID(&msg)
 		if nodeID == "" || err != nil {
 			klog.Warning("node id is not found in the message")
 			continue
 		}
+		//todo:: listMsg 和 Msg的区别？  Store和Queue的区别？   Queue只Add msgkey?   版本的概念？
 		if isListResource(&msg) {
 			q.addListMessageToQueue(nodeID, &msg)
 		} else {

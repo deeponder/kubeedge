@@ -120,6 +120,7 @@ func (m *metaManager) processInsert(message model.Message) {
 	imitator.DefaultV2Client.Inject(message)
 	resKey, resType, _ := parseResource(message.GetResource())
 
+	// 落地到sqlite
 	meta := &dao.Meta{
 		Key:   resKey,
 		Type:  resType,
@@ -131,10 +132,11 @@ func (m *metaManager) processInsert(message model.Message) {
 		return
 	}
 
-	// Notify edged
+	// Notify edged  下游
 	sendToEdged(&message, false)
 
 	resp := message.NewRespByMessage(&message, OK)
+	// group  "hub" 即edgehub
 	sendToCloud(resp)
 }
 
@@ -170,10 +172,13 @@ func (m *metaManager) processUpdate(message model.Message) {
 
 	msgSource := message.GetSource()
 	switch msgSource {
+	// 来自边端的edged, 则发往cloud
 	case modules.EdgedModuleName:
 		sendToCloud(&message)
 		resp := message.NewRespByMessage(&message, OK)
+		// 返回edged
 		sendToEdged(resp, message.IsSync())
+	//	来自云端的edgeController， 发往edged， 同时给edgeController回包
 	case cloudmodules.EdgeControllerModuleName, cloudmodules.DynamicControllerModuleName:
 		sendToEdged(&message, message.IsSync())
 		resp := message.NewRespByMessage(&message, OK)
@@ -227,12 +232,14 @@ func (m *metaManager) processDelete(message model.Message) {
 
 	_, resType, _ := parseResource(message.GetResource())
 
+	// todo::没有删除sqlite的数据？
+	// 来自边端的
 	if resType == model.ResourceTypePod && message.GetSource() == modules.EdgedModuleName {
 		sendToCloud(&message)
 		return
 	}
 
-	// Notify edged
+	// Notify edged， 来自云端的删除请求
 	sendToEdged(&message, false)
 	resp := message.NewRespByMessage(&message, OK)
 	sendToCloud(resp)
@@ -326,6 +333,7 @@ func (m *metaManager) processSync() {
 }
 
 func (m *metaManager) syncPodStatus() {
+	// 定期同步sqlite的数据到cloud
 	klog.Infof("start to sync pod status in edge-store to cloud")
 	podStatusRecords, err := dao.QueryAllMeta("type", model.ResourceTypePodStatus)
 	if err != nil {
@@ -429,6 +437,7 @@ func (m *metaManager) processVolume(message model.Message) {
 
 func (m *metaManager) process(message model.Message) {
 	operation := message.GetOperation()
+	// 根据不同的消息类型走不通的处理逻辑
 	switch operation {
 	case model.InsertOperation:
 		m.processInsert(message)

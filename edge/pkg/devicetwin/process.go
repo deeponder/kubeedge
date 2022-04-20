@@ -41,6 +41,8 @@ func (dt *DeviceTwin) RegisterDTModule(name string) {
 }
 
 //distributeMsg distribute message to diff module
+//dtcommon.MemModule\TwinModule\DeviceModule\CommonModule.  devicetwin/dtmanager目录下
+// 其中CommonModule起到devicetwin各模块通信proxy的作用，支持将消息转发到edged/cloudhub/
 func (dt *DeviceTwin) distributeMsg(m interface{}) error {
 	msg, ok := m.(model.Message)
 	if !ok {

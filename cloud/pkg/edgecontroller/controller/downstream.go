@@ -90,6 +90,10 @@ func (dc *DownstreamController) syncPod() {
 				klog.Warningf("pod event type: %s unsupported", e.Type)
 				continue
 			}
+			// rule & ruleEndpoint 发往 metaconfig.ModuleNameRouter
+			// 其它的直接发往metaconfig.ModuleNameCloudHub
+			// 承担apiServer to edge的下行中间人角色
+			// 注意： 这里msg需要发往哪个Node， 是云端的K8s已经决策好了。
 			if err := dc.messageLayer.Send(*msg); err != nil {
 				klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 			} else {
@@ -335,6 +339,7 @@ func (dc *DownstreamController) syncRuleEndpoint() {
 }
 
 // Start DownstreamController
+// 开启N个协程，同步apiServer的消息，到cloudhub/router， 再最终到edge
 func (dc *DownstreamController) Start() error {
 	klog.Info("start downstream controller")
 	// pod
@@ -384,6 +389,7 @@ func (dc *DownstreamController) initLocating() error {
 }
 
 // NewDownstreamController create a DownstreamController from config
+// 各个资源的Informer， List-watch机制监听变更。 包括 Pod\configmap\secret\node\svc\endpoint\rule\ruleEndpoint
 func NewDownstreamController(config *v1alpha1.EdgeController, k8sInformerFactory k8sinformers.SharedInformerFactory, keInformerFactory informers.KubeEdgeCustomInformer,
 	crdInformerFactory crdinformers.SharedInformerFactory) (*DownstreamController, error) {
 	lc := &manager.LocationCache{}
@@ -458,6 +464,7 @@ func NewDownstreamController(config *v1alpha1.EdgeController, k8sInformerFactory
 		rulesManager:         rulesManager,
 		ruleEndpointsManager: ruleEndpointsManager,
 	}
+	// todo::没看懂
 	if err := dc.initLocating(); err != nil {
 		return nil, err
 	}

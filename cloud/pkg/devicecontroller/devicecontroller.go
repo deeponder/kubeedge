@@ -26,10 +26,12 @@ func newDeviceController(enable bool) *DeviceController {
 	if !enable {
 		return &DeviceController{enable: enable}
 	}
+	// 分为DeviceModelManager和DeviceManager, 和 edgeController类似
 	downstream, err := controller.NewDownstreamController(informers.GetInformersManager().GetCRDInformerFactory())
 	if err != nil {
 		klog.Exitf("New downstream controller failed with error: %s", err)
 	}
+	// edge to apiServer比较简单， 只是消息的转发，调用k8s client api
 	upstream, err := controller.NewUpstreamController(downstream)
 	if err != nil {
 		klog.Exitf("new upstream controller failed with error: %s", err)
@@ -67,7 +69,7 @@ func (dc *DeviceController) Start() {
 		klog.Exitf("start downstream failed with error: %s", err)
 	}
 	// wait for downstream controller to start and load deviceModels and devices
-	// TODO think about sync
+	// TODO think about sync   channel同步dc 是否ready？
 	time.Sleep(1 * time.Second)
 	if err := dc.upstream.Start(); err != nil {
 		klog.Exitf("start upstream failed with error: %s", err)

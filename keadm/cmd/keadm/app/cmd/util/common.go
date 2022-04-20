@@ -258,6 +258,7 @@ func installKubeEdge(options types.InstallOptions, version semver.Version) error
 	arch := runtime.GOARCH
 
 	// create the storage path of the kubeedge installation packages
+	// 配置和安装包目录 /etc/kubeedge
 	if options.TarballPath == "" {
 		options.TarballPath = KubeEdgePath
 	} else {
@@ -282,6 +283,7 @@ func installKubeEdge(options types.InstallOptions, version semver.Version) error
 	filename := fmt.Sprintf("kubeedge-v%s-linux-%s.tar.gz", version, arch)
 	checksumFilename := fmt.Sprintf("checksum_kubeedge-v%s-linux-%s.tar.gz.txt", version, arch)
 	filePath := fmt.Sprintf("%s/%s", options.TarballPath, filename)
+	// checksum
 	if _, err = os.Stat(filePath); err == nil {
 		fmt.Printf("Expected or Default KubeEdge version %v is already downloaded and will checksum for it. \n", version)
 		if success, _ := checkSum(filename, checksumFilename, version, options.TarballPath); !success {
@@ -312,6 +314,7 @@ func installKubeEdge(options types.InstallOptions, version semver.Version) error
 	} else if !os.IsNotExist(err) {
 		return err
 	} else {
+		// 下载安装包
 		if err := retryDownload(filename, checksumFilename, version, options.TarballPath); err != nil {
 			return err
 		}
@@ -323,6 +326,7 @@ func installKubeEdge(options types.InstallOptions, version semver.Version) error
 
 	var untarFileAndMoveCloudCore, untarFileAndMoveEdgeCore string
 
+	// 解压安装包
 	if options.ComponentType == types.CloudCore {
 		untarFileAndMoveCloudCore = fmt.Sprintf("cd %s && tar -C %s -xvzf %s && cp %s/%s/cloud/cloudcore/%s %s/",
 			options.TarballPath, options.TarballPath, filename, options.TarballPath, dirname, KubeCloudBinaryName, KubeEdgeUsrBinPath)

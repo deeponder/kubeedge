@@ -155,6 +155,7 @@ func (dc *DownstreamController) syncDevice() {
 			}
 			switch e.Type {
 			case watch.Added:
+				// 增加Device
 				dc.deviceAdded(device)
 			case watch.Deleted:
 				dc.deviceDeleted(device)
@@ -169,6 +170,7 @@ func (dc *DownstreamController) syncDevice() {
 
 // addToConfigMap adds device in the configmap
 func (dc *DownstreamController) addToConfigMap(device *v1alpha2.Device) {
+	// 每个Node一个configmap, 维护所有绑定到改node的device信息
 	configMap, ok := dc.configMapManager.ConfigMap.Load(device.Spec.NodeSelector.NodeSelectorTerms[0].MatchExpressions[0].Values[0])
 	if !ok {
 		nodeConfigMap := &v1.ConfigMap{}
@@ -386,7 +388,9 @@ func addDeviceInstanceAndProtocol(device *v1alpha2.Device, deviceProfile *types.
 
 // deviceAdded creates a device, adds in deviceManagers map, send a message to edge node if node selector is present.
 func (dc *DownstreamController) deviceAdded(device *v1alpha2.Device) {
+	// 保存到deviceManager的map
 	dc.deviceManager.Device.Store(device.Name, device)
+	// Device需要定义节点的选择器， 才能往下做调度
 	if len(device.Spec.NodeSelector.NodeSelectorTerms) != 0 && len(device.Spec.NodeSelector.NodeSelectorTerms[0].MatchExpressions) != 0 && len(device.Spec.NodeSelector.NodeSelectorTerms[0].MatchExpressions[0].Values) != 0 {
 		dc.addToConfigMap(device)
 		edgeDevice := createDevice(device)
@@ -874,11 +878,13 @@ func (dc *DownstreamController) deviceDeleted(device *v1alpha2.Device) {
 func (dc *DownstreamController) Start() error {
 	klog.Info("Start downstream devicecontroller")
 
+	// DeviceModel是Device的抽象， 只是保存在deviceModelManager.DeviceModel map中， 后续如何用？  类型CRD?
 	go dc.syncDeviceModel()
 
 	// Wait for adding all device model
 	// TODO need to think about sync
 	time.Sleep(1 * time.Second)
+	// Device 类似CR？
 	go dc.syncDevice()
 
 	return nil

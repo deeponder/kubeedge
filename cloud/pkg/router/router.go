@@ -52,6 +52,7 @@ func (r *router) Enable() bool {
 }
 
 func (r *router) Start() {
+	// rule & ruleEndpoint 类型的msg
 	klog.Info("In router module, start...")
 	listener.Process(r.Name())
 }

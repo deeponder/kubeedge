@@ -25,11 +25,13 @@ func newEdgeController(config *v1alpha1.EdgeController) *EdgeController {
 		return ec
 	}
 	var err error
+	// 上行控制器。 edge to apiServer?
 	ec.upstream, err = controller.NewUpstreamController(config, informers.GetInformersManager().GetK8sInformerFactory())
 	if err != nil {
 		klog.Exitf("new upstream controller failed with error: %s", err)
 	}
 
+	// 下行控制器。 apiServer to edge?
 	ec.downstream, err = controller.NewDownstreamController(config, informers.GetInformersManager().GetK8sInformerFactory(), informers.GetInformersManager(), informers.GetInformersManager().GetCRDInformerFactory())
 	if err != nil {
 		klog.Exitf("new downstream controller failed with error: %s", err)
@@ -57,6 +59,7 @@ func (ec *EdgeController) Enable() bool {
 }
 
 // Start controller
+// 上行和下行控制器的start函数
 func (ec *EdgeController) Start() {
 	if err := ec.upstream.Start(); err != nil {
 		klog.Exitf("start upstream failed with error: %s", err)

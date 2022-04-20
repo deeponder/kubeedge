@@ -16,6 +16,7 @@ import (
 // StartServer serves
 func StartServer(address string) {
 	uds := NewUnixDomainSocket(address)
+	// 定义如何处理进来的请求
 	uds.SetContextHandler(func(context string) string {
 		// receive message from client
 		klog.Infof("uds server receives context: %s", context)
@@ -25,7 +26,7 @@ func StartServer(address string) {
 			return feedbackError(err, msg)
 		}
 
-		// Send message to edge
+		// Send message to edge, 同步模式， Send为异步
 		resp, err := beehiveContext.SendSync(hubmodel.SrcCloudHub, *msg, constants.CSISyncMsgRespTimeout)
 		if err != nil {
 			klog.Errorf("failed to send message to edge: %v", err)

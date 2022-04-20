@@ -62,6 +62,7 @@ func NewKubeEdgeReset() *cobra.Command {
 		Short:   "Teardowns KubeEdge (cloud & edge) component",
 		Long:    resetLongDescription,
 		Example: resetExample,
+		// 前置的判断
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			whoRunning, err := util.RunningModule()
 			if err != nil {
@@ -96,6 +97,7 @@ func NewKubeEdgeReset() *cobra.Command {
 			}
 
 			// 2. Remove containers managed by KubeEdge. Only for edge node.
+			// 最终调用kubeadm的RemoveContainers
 			if err := RemoveContainers(IsEdgeNode, utilsexec.New()); err != nil {
 				fmt.Printf("Failed to remove containers: %v\n", err)
 			}

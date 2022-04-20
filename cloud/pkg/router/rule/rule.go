@@ -112,6 +112,9 @@ func addRule(rule *routerv1.Rule) error {
 	if err := source.RegisterListener(func(data interface{}) (interface{}, error) {
 		//TODO Use goroutine pool later
 		var execResult ExecResult
+		// rest: http请求
+		// eventbus/servicebus: 由cloudhub转发
+		// 另外需要自己定义rule和ruleEndpoint
 		resp, err := source.Forward(target, data)
 		if err != nil {
 			// rule.Status.Fail++

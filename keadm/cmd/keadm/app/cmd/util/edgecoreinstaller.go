@@ -52,6 +52,7 @@ type KubeEdgeInstTool struct {
 func (ku *KubeEdgeInstTool) InstallTools() error {
 	ku.SetOSInterface(GetOSInterface())
 
+	// pidof 判断edgecore是否running
 	edgeCoreRunning, err := ku.IsKubeEdgeProcessRunning(KubeEdgeBinaryName)
 	if err != nil {
 		return err
@@ -67,6 +68,7 @@ func (ku *KubeEdgeInstTool) InstallTools() error {
 		ComponentType: types.EdgeCore,
 	}
 
+	// 同cloud的init操作
 	err = ku.InstallKubeEdge(*opts)
 	if err != nil {
 		return err
@@ -77,6 +79,7 @@ func (ku *KubeEdgeInstTool) InstallTools() error {
 		return err
 	}
 
+	// 执行edgecore二进制
 	err = ku.RunEdgeCore()
 	if err != nil {
 		return err
@@ -86,20 +89,24 @@ func (ku *KubeEdgeInstTool) InstallTools() error {
 
 func (ku *KubeEdgeInstTool) createEdgeConfigFiles() error {
 	//This makes sure the path is created, if it already exists also it is fine
+	// 路径同cloud
 	err := os.MkdirAll(KubeEdgeConfigDir, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("not able to create %s folder path", KubeEdgeConfigDir)
 	}
 
+	// 默认的edgecore各模块配置
 	edgeCoreConfig := v1alpha1.NewDefaultEdgeCoreConfig()
 	edgeCoreConfig.Modules.EdgeHub.WebSocket.Server = ku.CloudCoreIP
 
+	// 做一些自定义项的替换
 	if ku.EdgeNodeName != "" {
 		edgeCoreConfig.Modules.Edged.HostnameOverride = ku.EdgeNodeName
 	}
 	if ku.RuntimeType != "" {
 		edgeCoreConfig.Modules.Edged.RuntimeType = ku.RuntimeType
 	}
+	// 可以直接指定cgroup driver, --cgroupdriver=systemd/cgroupfs
 	if ku.CGroupDriver != "" {
 		switch ku.CGroupDriver {
 		case v1alpha1.CGroupDriverSystemd:
@@ -115,6 +122,7 @@ func (ku *KubeEdgeInstTool) createEdgeConfigFiles() error {
 		edgeCoreConfig.Modules.Edged.RemoteRuntimeEndpoint = ku.RemoteRuntimeEndpoint
 		edgeCoreConfig.Modules.Edged.RemoteImageEndpoint = ku.RemoteRuntimeEndpoint
 	}
+	// cloud生成的token必须指定
 	if ku.Token != "" {
 		edgeCoreConfig.Modules.EdgeHub.Token = ku.Token
 	}
@@ -136,18 +144,21 @@ func (ku *KubeEdgeInstTool) createEdgeConfigFiles() error {
 		edgeCoreConfig.Modules.Edged.Labels = labelsMap
 	}
 
+	// 各个模块的配置参数校验
 	if errs := validation.ValidateEdgeCoreConfiguration(edgeCoreConfig); len(errs) > 0 {
 		return errors.New(util.SpliceErrors(errs.ToAggregate().Errors()))
 	}
+	// 写到/etc/kubeedge/config/edgecore.yaml
 	return types.Write2File(KubeEdgeEdgeCoreNewYaml, edgeCoreConfig)
 }
 
 // TearDown method will remove the edge node from api-server and stop edgecore process
+// reset命令
 func (ku *KubeEdgeInstTool) TearDown() error {
 	ku.SetOSInterface(GetOSInterface())
 	ku.SetKubeEdgeVersion(ku.ToolVersion)
 
-	//Kill edge core process
+	//Kill edge core process。 systemctl stop or pkill ...
 	if err := ku.KillKubeEdgeBinary(KubeEdgeBinaryName); err != nil {
 		return err
 	}

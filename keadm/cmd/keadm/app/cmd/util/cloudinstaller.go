@@ -22,6 +22,7 @@ type KubeCloudInstTool struct {
 // InstallTools downloads KubeEdge for the specified version
 // and makes the required configuration changes and initiates cloudcore.
 func (cu *KubeCloudInstTool) InstallTools() error {
+	// 适配不同的操作系统
 	cu.SetOSInterface(GetOSInterface())
 	cu.SetKubeEdgeVersion(cu.ToolVersion)
 
@@ -36,11 +37,13 @@ func (cu *KubeCloudInstTool) InstallTools() error {
 	}
 
 	//This makes sure the path is created, if it already exists also it is fine
+	// 配置文件
 	err = os.MkdirAll(KubeEdgeConfigDir, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("not able to create %s folder path", KubeEdgeConfigDir)
 	}
 
+	// 默认配置
 	cloudCoreConfig := v1alpha1.NewDefaultCloudCoreConfig()
 	if cu.KubeConfig != "" {
 		cloudCoreConfig.KubeAPIConfig.KubeConfig = cu.KubeConfig
@@ -58,6 +61,7 @@ func (cu *KubeCloudInstTool) InstallTools() error {
 		cloudCoreConfig.Modules.CloudHub.DNSNames = strings.Split(cu.DNSName, ",")
 	}
 
+	// 默认配置写到配置文件
 	if err := types.Write2File(KubeEdgeCloudCoreNewYaml, cloudCoreConfig); err != nil {
 		return err
 	}
@@ -91,6 +95,7 @@ func (cu *KubeCloudInstTool) RunCloudCore() error {
 	}
 
 	// start cloudcore
+	// 启动cloudcore， 执行/usr/local/bin目录下的二进制
 	command = fmt.Sprintf("%s/%s > %s/%s.log 2>&1 &", KubeEdgeUsrBinPath, KubeCloudBinaryName, KubeEdgeLogPath, KubeCloudBinaryName)
 
 	cmd = NewCommand(command)

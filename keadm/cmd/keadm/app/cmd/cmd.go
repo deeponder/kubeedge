@@ -58,6 +58,19 @@ var (
 `
 )
 
+/*
+keadm支持的命令定义，包括：
+1. init。
+2. join
+3. reset
+4. version
+5. gettoken
+6. debug
+7. beta
+
+
+*/
+
 // NewKubeedgeCommand returns cobra.Command to run keadm commands
 func NewKubeedgeCommand() *cobra.Command {
 	cmds := &cobra.Command{

@@ -58,6 +58,7 @@ func (eh *EdgeHub) Enable() bool {
 
 //Start sets context and starts the controller
 func (eh *EdgeHub) Start() {
+	// start 证书相关
 	eh.certManager = certificate.NewCertManager(config.Config.EdgeHub, config.Config.NodeName)
 	eh.certManager.Start()
 
@@ -65,6 +66,7 @@ func (eh *EdgeHub) Start() {
 	close(HasTLSTunnelCerts)
 
 	go eh.ifRotationDone()
+	// end 证书相关
 
 	for {
 		select {
@@ -73,6 +75,7 @@ func (eh *EdgeHub) Start() {
 			return
 		default:
 		}
+		// 初始化ws/quic client, eh.chClient
 		err := eh.initial()
 		if err != nil {
 			klog.Exitf("failed to init controller: %v", err)
@@ -81,6 +84,7 @@ func (eh *EdgeHub) Start() {
 
 		waitTime := time.Duration(config.Config.Heartbeat) * time.Second * 2
 
+		// ws/quic connection, 存于client
 		err = eh.chClient.Init()
 		if err != nil {
 			klog.Errorf("connection failed: %v, will reconnect after %s", err, waitTime.String())
@@ -88,14 +92,20 @@ func (eh *EdgeHub) Start() {
 			continue
 		}
 		// execute hook func after connect
+		// 广播连接信息
 		eh.pubConnectInfo(true)
+		// 从ws连接receive Msg， 调用dispatch, 根据group， 转发到meta/twin/bus
 		go eh.routeToEdge()
+		// 转发发来modules.EdgeHubModuleName, 再write to ws conn
 		go eh.routeToCloud()
+		// 心跳失败则重连， 通过reconnectChan 同步状态
 		go eh.keepalive()
 
 		// wait the stop signal
 		// stop authinfo manager/websocket connection
+		// 阻塞读
 		<-eh.reconnectChan
+		// 关闭连接
 		eh.chClient.UnInit()
 
 		// execute hook fun after disconnect
@@ -105,7 +115,7 @@ func (eh *EdgeHub) Start() {
 		klog.Warningf("connection is broken, will reconnect after %s", waitTime.String())
 		time.Sleep(waitTime)
 
-		// clean channel
+		// clean reconnectChan
 	clean:
 		for {
 			select {
