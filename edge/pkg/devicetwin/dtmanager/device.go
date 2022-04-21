@@ -189,6 +189,7 @@ func UpdateDeviceAttr(context *dtcontext.DTContext, deviceID string, attributes 
 				//todo
 				klog.Errorf("Build device attribute update failed: %v", err)
 			}
+			// 这里根据不同的操作类型， 构造device的mqtt topic
 			topic := dtcommon.DeviceETPrefix + deviceID + dtcommon.DeviceETUpdatedSuffix
 			context.Send(deviceID, dtcommon.SendToEdge, dtcommon.CommModule,
 				context.BuildModelMessage(modules.BusGroup, "", topic, messagepkg.OperationPublish, payload))
